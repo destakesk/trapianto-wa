@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trapianto di Capelli</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center;
+    justify-content: center; font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #0b141a; color: #e9edef; padding: 24px;
+  }
+  .card { text-align: center; max-width: 420px; width: 100%; }
+  .logo {
+    width: 72px; height: 72px; border-radius: 18px; margin: 0 auto 20px;
+    background: #25d366; display: flex; align-items: center; justify-content: center;
+  }
+  .logo svg { width: 42px; height: 42px; fill: #fff; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p { color: #8696a0; margin: 0 0 24px; font-size: 15px; }
+  .btn {
+    display: inline-block; background: #25d366; color: #fff; text-decoration: none;
+    padding: 14px 28px; border-radius: 999px; font-weight: 600; font-size: 16px;
+  }
+  .spinner {
+    width: 28px; height: 28px; border: 3px solid #1f2c34; border-top-color: #25d366;
+    border-radius: 50%; margin: 0 auto 20px; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.978-1.043z"/></svg>
+    </div>
+    <div class="spinner" id="spinner"></div>
+    <h1>Trapianto di Capelli</h1>
+    <p>Ti stiamo reindirizzando a WhatsApp...</p>
+    <a class="btn hidden" id="manual" href="#">Apri WhatsApp</a>
+  </div>
+
+<script>
+  var AGENTS = [{"label": "Agent 1", "phone": "355684003735", "weight": 1}, {"label": "Agent 2", "phone": "355689052927", "weight": 1}, {"label": "Agent 3", "phone": "355685077710", "weight": 1}, {"label": "Agent 4", "phone": "355685655077", "weight": 1}, {"label": "Agent 5", "phone": "355685055556", "weight": 1}];
+  var MESSAGE = "Salve, potrei avere informazioni sul trapianto di capelli? Rif: Meta Ad";
+  var MODE = "round-robin";
+  // Merkezi sıra sayacı: round-robin tüm ziyaretçiler arasında ortak sırayla
+  // dağıtır (Supabase RPC, atomik artış). Ulaşılamazsa random'a düşer.
+  var RPC_URL = "https://zmdbafqjtqlenleocukz.supabase.co/rest/v1/rpc/wa_next";
+  var RPC_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptZGJhZnFqdHFsZW5sZW9jdWt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NzA0NDMsImV4cCI6MjA5MzA0NjQ0M30.bVUMLSwi37WlltqdZYVIkpIJUHgXnECYvSaj3C4iQtE";
+
+  function pickWeighted(list) {
+    var total = 0, i;
+    for (i = 0; i < list.length; i++) total += (list[i].weight || 1);
+    var r = Math.random() * total;
+    for (i = 0; i < list.length; i++) {
+      r -= (list[i].weight || 1);
+      if (r <= 0) return list[i];
+    }
+    return list[list.length - 1];
+  }
+
+  function pickLocal() {
+    if (MODE === "weighted") return pickWeighted(AGENTS);
+    return AGENTS[Math.floor(Math.random() * AGENTS.length)];
+  }
+
+  function finish(agent) {
+    var url = "https://wa.me/" + agent.phone +
+              (MESSAGE ? "?text=" + encodeURIComponent(MESSAGE) : "");
+    var btn = document.getElementById("manual");
+    btn.href = url;
+    // Otomatik yönlendir; engellenirse manuel buton görünür kalsın
+    setTimeout(function () {
+      document.getElementById("spinner").classList.add("hidden");
+      btn.classList.remove("hidden");
+    }, 1500);
+    window.location.replace(url);
+  }
+
+  if (!AGENTS.length) {
+    document.getElementById("spinner").classList.add("hidden");
+    document.querySelector("p").textContent = "Nessun agente configurato.";
+  } else if (MODE === "round-robin" && AGENTS.length > 1) {
+    var ctrl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 2000);
+    fetch(RPC_URL, {
+      method: "POST",
+      headers: { "apikey": RPC_KEY, "Authorization": "Bearer " + RPC_KEY,
+                  "Content-Type": "application/json" },
+      body: JSON.stringify({ p_site: location.host + location.pathname }),
+      signal: ctrl ? ctrl.signal : undefined
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (n) {
+        if (timer) clearTimeout(timer);
+        n = parseInt(n, 10);
+        finish(AGENTS[(isNaN(n) || n < 0 ? 0 : n) % AGENTS.length]);
+      })
+      .catch(function () { if (timer) clearTimeout(timer); finish(pickLocal()); });
+  } else {
+    finish(MODE === "round-robin" ? AGENTS[0] : pickLocal());
+  }
+</script>
+</body>
+</html>
