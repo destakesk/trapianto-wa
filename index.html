@@ -103,6 +103,17 @@
       })
       .catch(function () { if (timer) clearTimeout(timer); finish(pickLocal()); });
   } else {
+    // Tek agent / random / weighted: sonucu beklemeye gerek yok — sayaci
+    // arka planda artir (keepalive: sayfa kapansa da istek tamamlanir).
+    try {
+      fetch(RPC_URL, {
+        method: "POST",
+        headers: { "apikey": RPC_KEY, "Authorization": "Bearer " + RPC_KEY,
+                    "Content-Type": "application/json" },
+        body: JSON.stringify({ p_site: location.host + location.pathname }),
+        keepalive: true
+      }).catch(function () {});
+    } catch (e) {}
     finish(MODE === "round-robin" ? AGENTS[0] : pickLocal());
   }
 </script>
